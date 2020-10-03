@@ -6,6 +6,7 @@ Based on https://github.com/picklepete/pyicloud/blob/master/pyicloud/cmdline.py
 """
 from __future__ import print_function
 from builtins import input
+import traceback
 import argparse
 import pickle
 import time
@@ -42,9 +43,18 @@ def sync_folder(drive, destination, items):
             os.makedirs(newdir, exist_ok=True)
             sync_folder(item, newdir, item.dir())
         elif item.type == 'file':
-            if verbose:
-                print("Download {} to {}".format(item.name, destination))
             localfile = os.path.join(destination, item.name)
+            if os.path.isfile(localfile):
+                localtime = int(os.path.getmtime(localfile))
+                remotetime = int(item.date_modified.timestamp())
+                localsize = os.path.getsize(localfile)
+                remotesize = item.size
+                if localtime == remotetime and localsize == remotesize:
+                    if verbose:
+                        print("Skipping already downloaded file {}".format(localfile))
+                    continue
+            if verbose:
+                print("Downloading {} to {}".format(item.name, destination))
             try:
                 with item.open(stream=True) as response:
                     with open(localfile, 'wb') as file_out:
@@ -228,7 +238,11 @@ def main(args=None):
 
             print(message, file=sys.stderr)
 
-    sync_folder(api.drive, command_line.destination, api.drive.dir())
+    try:
+        sync_folder(api.drive, command_line.destination, api.drive.dir())
+    except Exception as e:
+        if not silent:
+            traceback.print_exc()
 
 if __name__ == "__main__":
     main()
