@@ -1,11 +1,11 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 A simple tool to sync an iCloud drive to a local folder
 Based on https://github.com/picklepete/pyicloud/blob/master/pyicloud/cmdline.py
 """
-from __future__ import print_function
 from builtins import input
+from pathlib import Path
 import traceback
 import argparse
 import pickle
@@ -14,7 +14,7 @@ import sys
 import os
 
 from click import confirm
-from shutil import copyfileobj
+from shutil import copyfileobj, rmtree
 
 from pyicloud import PyiCloudService
 from pyicloud.exceptions import PyiCloudFailedLoginException, PyiCloudAPIResponseException
@@ -22,6 +22,7 @@ from . import utils
 
 verbose = False
 silent = False
+remove = False
 
 def create_pickled_data(idevice, filename):
     """
@@ -35,15 +36,19 @@ def create_pickled_data(idevice, filename):
     pickle.dump(idevice.content, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
     pickle_file.close()
 
-def sync_folder(drive, destination, items):
+def sync_folder(drive, destination, items, top=True):
+    """Synchronize iCloud Drive folder."""
+    files = set()
     for i in items:
         item=drive[i]
         if item.type == 'folder':
             newdir = os.path.join(destination, item.name)
             os.makedirs(newdir, exist_ok=True)
-            sync_folder(item, newdir, item.dir())
+            files.add(newdir)
+            files.update(sync_folder(item, newdir, item.dir(), False))
         elif item.type == 'file':
             localfile = os.path.join(destination, item.name)
+            files.add(localfile)
             if os.path.isfile(localfile):
                 localtime = int(os.path.getmtime(localfile))
                 remotetime = int(item.date_modified.timestamp())
@@ -64,11 +69,23 @@ def sync_folder(drive, destination, items):
             except PyiCloudAPIResponseException as e:
                 if not silent:
                     print("Failed to download {}: {}".format(localfile, str(e)))
+    if top and remove:
+        for path in Path(destination).rglob('*'):
+            localfile = str(path.absolute())
+            if localfile not in files:
+                if verbose:
+                    print("Removing {}".format(localfile))
+                if path.is_file():
+                    path.unlink(missing_ok=True)
+                elif path.is_dir():
+                    rmtree(localfile)
+    return files
 
 def main(args=None):
     """Main commandline entrypoint."""
     global verbose
     global silent
+    global remove
 
     if args is None:
         args = sys.argv[1:]
@@ -127,6 +144,14 @@ def main(args=None):
         help="Destination directory for files downloaded from the iCloud Drive",
     )
     parser.add_argument(
+        "-r",
+        "--remove",
+        action="store_true",
+        dest="remove",
+        default=False,
+        help="Remove local files no longer present in iCloud Drive",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -147,6 +172,7 @@ def main(args=None):
 
     verbose = command_line.verbose
     silent = command_line.silent
+    remove = command_line.remove
 
     if command_line.useEnvironment:
         username = os.environ.get('USERNAME')
