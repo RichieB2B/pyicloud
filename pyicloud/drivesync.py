@@ -29,6 +29,13 @@ def create_pickled_data(idevice, filename):
     pickle.dump(idevice.content, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
     pickle_file.close()
 
+def sync_folder(drive, destination, items):
+    for i in items:
+        item=drive[i]
+        if item.type == 'folder':
+            sync_folder(item, os.path.join(destination, item.name), item.dir())
+        elif item.type == 'file':
+            print("Copy {} to {}".format(item.name, destination))
 
 def main(args=None):
     """Main commandline entrypoint."""
@@ -189,7 +196,7 @@ def main(args=None):
 
             print(message, file=sys.stderr)
 
-    #code starts here
+    sync_folder(api.drive, command_line.destination, api.drive.dir())
 
 if __name__ == "__main__":
     main()
