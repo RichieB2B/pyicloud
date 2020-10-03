@@ -8,6 +8,7 @@ from __future__ import print_function
 from builtins import input
 import argparse
 import pickle
+import time
 import sys
 import os
 
@@ -17,6 +18,9 @@ from shutil import copyfileobj
 from pyicloud import PyiCloudService
 from pyicloud.exceptions import PyiCloudFailedLoginException, PyiCloudAPIResponseException
 from . import utils
+
+verbose = False
+silent = False
 
 def create_pickled_data(idevice, filename):
     """
@@ -38,16 +42,24 @@ def sync_folder(drive, destination, items):
             os.makedirs(newdir, exist_ok=True)
             sync_folder(item, newdir, item.dir())
         elif item.type == 'file':
-            print("Copy {} to {}".format(item.name, destination))
+            if verbose:
+                print("Download {} to {}".format(item.name, destination))
+            localfile = os.path.join(destination, item.name)
             try:
                 with item.open(stream=True) as response:
-                    with open(os.path.join(destination, item.name), 'wb') as file_out:
+                    with open(localfile, 'wb') as file_out:
                         copyfileobj(response.raw, file_out)
+                modtime = time.mktime(item.date_modified.timetuple())
+                os.utime(localfile, (modtime, modtime))
             except PyiCloudAPIResponseException as e:
-                print("Failed")
+                if not silent:
+                    print("Failed to download {}: {}".format(localfile, str(e)))
 
 def main(args=None):
     """Main commandline entrypoint."""
+    global verbose
+    global silent
+
     if args is None:
         args = sys.argv[1:]
 
@@ -112,8 +124,19 @@ def main(args=None):
         default=False,
         help="Print verbose status messages while working",
     )
+    parser.add_argument(
+        "-s",
+        "--silent",
+        action="store_true",
+        dest="silent",
+        default=False,
+        help="Silently ignore api errors except authentication issues.",
+    )
 
     command_line = parser.parse_args(args)
+
+    verbose = command_line.verbose
+    silent = command_line.silent
 
     if command_line.useEnvironment:
         username = os.environ.get('USERNAME')
