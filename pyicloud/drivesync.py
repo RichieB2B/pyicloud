@@ -12,9 +12,10 @@ import sys
 import os
 
 from click import confirm
+from shutil import copyfileobj
 
 from pyicloud import PyiCloudService
-from pyicloud.exceptions import PyiCloudFailedLoginException
+from pyicloud.exceptions import PyiCloudFailedLoginException, PyiCloudAPIResponseException
 from . import utils
 
 def create_pickled_data(idevice, filename):
@@ -33,9 +34,17 @@ def sync_folder(drive, destination, items):
     for i in items:
         item=drive[i]
         if item.type == 'folder':
-            sync_folder(item, os.path.join(destination, item.name), item.dir())
+            newdir = os.path.join(destination, item.name)
+            os.makedirs(newdir, exist_ok=True)
+            sync_folder(item, newdir, item.dir())
         elif item.type == 'file':
             print("Copy {} to {}".format(item.name, destination))
+            try:
+                with item.open(stream=True) as response:
+                    with open(os.path.join(destination, item.name), 'wb') as file_out:
+                        copyfileobj(response.raw, file_out)
+            except PyiCloudAPIResponseException as e:
+                print("Failed")
 
 def main(args=None):
     """Main commandline entrypoint."""
