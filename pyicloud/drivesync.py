@@ -9,6 +9,7 @@ from builtins import input
 import argparse
 import pickle
 import sys
+import os
 
 from click import confirm
 
@@ -37,6 +38,7 @@ def main(args=None):
     parser = argparse.ArgumentParser(description="iCloud Drive Sync Tool")
 
     parser.add_argument(
+        "-u",
         "--username",
         action="store",
         dest="username",
@@ -44,6 +46,7 @@ def main(args=None):
         help="Apple ID to Use",
     )
     parser.add_argument(
+        "-p",
         "--password",
         action="store",
         dest="password",
@@ -52,6 +55,14 @@ def main(args=None):
             "Apple ID Password to Use; if unspecified, password will be "
             "fetched from the system keyring."
         ),
+    )
+    parser.add_argument(
+        "-e",
+        "--environment",
+        action="store_true",
+        dest="useEnvironment",
+        default=False,
+        help="Read USERNAME and PASSWORD from environment variables.",
     )
     parser.add_argument(
         "-n",
@@ -88,8 +99,12 @@ def main(args=None):
 
     command_line = parser.parse_args(args)
 
-    username = command_line.username
-    password = command_line.password
+    if command_line.useEnvironment:
+        username = os.environ.get('USERNAME')
+        password = os.environ.get('PASSWORD')
+    else:
+        username = command_line.username
+        password = command_line.password
 
     if username and command_line.delete_from_keyring:
         utils.delete_password_in_keyring(username)
