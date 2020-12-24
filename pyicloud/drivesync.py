@@ -9,6 +9,7 @@ from pathlib import Path
 import traceback
 import argparse
 import pickle
+import json
 import time
 import sys
 import os
@@ -71,9 +72,15 @@ def sync_folder(drive, destination, items, top=True):
                         copyfileobj(response.raw, file_out)
                 modtime = time.mktime(item.date_modified.timetuple())
                 os.utime(localfile, (modtime, modtime))
-            except PyiCloudAPIResponseException as e:
+            except Exception as e:
                 if not silent:
-                    print("Failed to download {}: {}".format(localfile, str(e)))
+                    print(
+                        "Failed to download {}: {}: {}".format(
+                            localfile, type(e).__name__, str(e)
+                        )
+                    )
+                if verbose:
+                    print(json.dumps(item.data, indent=4))
     if top and remove:
         for path in Path(destination).rglob("*"):
             localfile = str(path.absolute())
