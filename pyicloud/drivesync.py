@@ -17,12 +17,16 @@ from click import confirm
 from shutil import copyfileobj, rmtree
 
 from pyicloud import PyiCloudService
-from pyicloud.exceptions import PyiCloudFailedLoginException, PyiCloudAPIResponseException
+from pyicloud.exceptions import (
+    PyiCloudFailedLoginException,
+    PyiCloudAPIResponseException,
+)
 from . import utils
 
 verbose = False
 silent = False
 remove = False
+
 
 def create_pickled_data(idevice, filename):
     """
@@ -36,17 +40,18 @@ def create_pickled_data(idevice, filename):
     pickle.dump(idevice.content, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
     pickle_file.close()
 
+
 def sync_folder(drive, destination, items, top=True):
     """Synchronize iCloud Drive folder."""
     files = set()
     for i in items:
-        item=drive[i]
-        if item.type == 'folder':
+        item = drive[i]
+        if item.type == "folder":
             newdir = os.path.join(destination, item.name)
             os.makedirs(newdir, exist_ok=True)
             files.add(newdir)
             files.update(sync_folder(item, newdir, item.dir(), False))
-        elif item.type == 'file':
+        elif item.type == "file":
             localfile = os.path.join(destination, item.name)
             files.add(localfile)
             if os.path.isfile(localfile):
@@ -62,7 +67,7 @@ def sync_folder(drive, destination, items, top=True):
                 print("Downloading {} to {}".format(item.name, destination))
             try:
                 with item.open(stream=True) as response:
-                    with open(localfile, 'wb') as file_out:
+                    with open(localfile, "wb") as file_out:
                         copyfileobj(response.raw, file_out)
                 modtime = time.mktime(item.date_modified.timetuple())
                 os.utime(localfile, (modtime, modtime))
@@ -70,7 +75,7 @@ def sync_folder(drive, destination, items, top=True):
                 if not silent:
                     print("Failed to download {}: {}".format(localfile, str(e)))
     if top and remove:
-        for path in Path(destination).rglob('*'):
+        for path in Path(destination).rglob("*"):
             localfile = str(path.absolute())
             if localfile not in files:
                 if verbose:
@@ -80,6 +85,7 @@ def sync_folder(drive, destination, items, top=True):
                 elif path.is_dir():
                     rmtree(localfile)
     return files
+
 
 def main(args=None):
     """Main commandline entrypoint."""
@@ -175,8 +181,8 @@ def main(args=None):
     remove = command_line.remove
 
     if command_line.useEnvironment:
-        username = os.environ.get('USERNAME')
-        password = os.environ.get('PASSWORD')
+        username = os.environ.get("USERNAME")
+        password = os.environ.get("PASSWORD")
     else:
         username = command_line.username
         password = command_line.password
@@ -243,7 +249,9 @@ def main(args=None):
                         sys.exit(1)
                     print("")
                 else:
-                    print("2 factor authentication required while in non-interactive mode.")
+                    print(
+                        "2 factor authentication required while in non-interactive mode."
+                    )
                     print("Please run this script without the -n switch.")
                     sys.exit(1)
             break
@@ -254,7 +262,7 @@ def main(args=None):
                 utils.delete_password_in_keyring(username)
 
             message = "Bad username or password for {username}".format(
-                username=username,
+                username=username
             )
             password = None
 
@@ -269,6 +277,7 @@ def main(args=None):
     except Exception as e:
         if not silent:
             traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()
