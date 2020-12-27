@@ -229,12 +229,19 @@ def main(args=None):
                 )
                 # fmt: on
 
-                code = input("(string) --> ")
-                if not api.validate_2fa_code(code):
-                    print("Failed to verify verification code")
-                    sys.exit(1)
+                if command_line.interactive:
+                    code = input("(string) --> ")
+                    if not api.validate_2fa_code(code):
+                        print("Failed to verify verification code")
+                        sys.exit(1)
 
-                print("")
+                    print("")
+                else:
+                    print(
+                        "2 factor authentication required while in non-interactive mode."
+                    )
+                    print("Please run this script without the -n switch.")
+                    sys.exit(1)
 
             elif api.requires_2sa:
                 # fmt: off
