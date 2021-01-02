@@ -88,7 +88,10 @@ def sync_folder(drive, destination, items, top=True):
                 if verbose:
                     print("Removing {}".format(localfile))
                 if path.is_file():
-                    path.unlink(missing_ok=True)
+                    try:
+                        path.unlink()
+                    except FileNotFoundError:
+                        pass
                 elif path.is_dir():
                     rmtree(localfile)
     return files
