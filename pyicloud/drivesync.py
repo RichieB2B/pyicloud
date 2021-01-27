@@ -128,6 +128,14 @@ def main(args=None):
         ),
     )
     parser.add_argument(
+        "-c",
+        "--cookie-directory",
+        action="store",
+        dest="cookieDir",
+        default=None,
+        help="Cookie directory to store the iCloud API tokens.",
+    )
+    parser.add_argument(
         "-e",
         "--environment",
         action="store_true",
@@ -216,7 +224,11 @@ def main(args=None):
             parser.error("No password supplied")
 
         try:
-            api = PyiCloudService(username.strip(), password.strip())
+            api = PyiCloudService(
+                username.strip(),
+                password.strip(),
+                cookie_directory=command_line.cookieDir,
+            )
             if (
                 not utils.password_exists_in_keyring(username)
                 and command_line.interactive
